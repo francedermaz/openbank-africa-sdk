@@ -32,3 +32,9 @@ coverage/
 # Yarn/npm
 .yarn/
 .pnp.*
+
+# Git worktrees (agentic workflow scratch space)
+.worktrees/
+
+# Subagent-driven-development workspace
+.superpowers/
