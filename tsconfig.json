@@ -9,7 +9,6 @@
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
     "outDir": "dist",
-    "rootDir": "src",
     "moduleResolution": "node"
   },
   "include": ["src", "tests", "examples"]
