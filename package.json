@@ -1,0 +1,29 @@
+{
+  "name": "openbank-africa-sdk",
+  "version": "0.1.0",
+  "description": "The open-source React Native SDK for African mobile money & open banking APIs.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/francedermaz/openbank-africa-sdk.git"
+  },
+  "keywords": ["react-native", "mobile-money", "mtn-momo", "open-banking", "africa", "fintech"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "tsc --noEmit",
+    "test": "jest",
+    "test:integration": "jest --config jest.integration.config.js",
+    "example": "ts-node examples/minimal-app/index.ts"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.11.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  }
+}
