@@ -2,14 +2,14 @@
 
 > The open-source React Native SDK for African mobile money & open banking APIs.
 
-**Primer adapter:** MTN Mobile Money (MoMo) API — Rwanda, con arquitectura lista para sumar Airtel Money y bancos después.
+**First adapter:** MTN Mobile Money (MoMo) API — Rwanda, with an architecture ready to add Airtel Money and banks later.
 
-## Estado
+## Status
 
-🚧 En desarrollo — MVP v1.0 sobre el producto **Collections** de MTN MoMo (Request to Pay, estado de transacción, balance).
+🚧 In development — MVP v1.0 on MTN MoMo's **Collections** product (Request to Pay, transaction status, balance).
 
-Ver [`docs/spec.md`](./docs/spec.md) para el spec técnico completo (arquitectura, endpoints, tipos, checklist).
+See [`docs/spec.md`](./docs/spec.md) for the full technical spec (architecture, endpoints, types, checklist).
 
-## Licencia
+## License
 
 [MIT](./LICENSE)
