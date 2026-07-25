@@ -44,9 +44,9 @@ describe('TokenManager', () => {
 
   it('should request a new token after the cached one expires', async () => {
     // Given
-    httpClient.post.mockResolvedValue({ access_token: 'token-abc', token_type: 'Bearer', expires_in: 1 });
+    httpClient.post.mockResolvedValue({ access_token: 'token-abc', token_type: 'Bearer', expires_in: 10 });
     await tokenManager.getToken(credentials);
-    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(Date.now() + 10_000);
+    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(Date.now() + 6_000);
     httpClient.post.mockResolvedValue({ access_token: 'token-def', token_type: 'Bearer', expires_in: 3600 });
 
     // When
