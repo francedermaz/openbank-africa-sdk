@@ -11,6 +11,9 @@
     "url": "https://github.com/francedermaz/openbank-africa-sdk.git"
   },
   "keywords": ["react-native", "mobile-money", "mtn-momo", "open-banking", "africa", "fintech"],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "lint": "tsc --noEmit",

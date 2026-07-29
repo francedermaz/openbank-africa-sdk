@@ -47,6 +47,32 @@ describe('HttpClient', () => {
       await expect(client.get('/path')).rejects.toThrow(HttpError);
       await expect(client.get('/path')).rejects.toMatchObject({ status: 404, body: 'Not Found' });
     });
+
+    it('should abort and throw HttpError when the request exceeds the timeout', async () => {
+      // Given
+      jest.useFakeTimers();
+      fetchMock.mockImplementation((_url: string, opts: { signal: AbortSignal }) => {
+        return new Promise((_resolve, reject) => {
+          opts.signal.addEventListener('abort', () => {
+            const abortError = new Error('The operation was aborted');
+            abortError.name = 'AbortError';
+            reject(abortError);
+          });
+        });
+      });
+
+      // When
+      const pending = client.get('/path', { timeoutMs: 5000 });
+      const assertion = expect(pending).rejects.toMatchObject({
+        status: 0,
+        body: 'Request timed out after 5000ms',
+      });
+      jest.advanceTimersByTime(5000);
+
+      // Then
+      await assertion;
+      jest.useRealTimers();
+    });
   });
 
   describe('post', () => {

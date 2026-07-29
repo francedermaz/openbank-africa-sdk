@@ -1,5 +1,5 @@
 import { MtnMomoAdapter } from './adapters/mtn-momo';
-import type { Balance, OpenBankClientConfig, PaymentRequest, PaymentResult } from './core/types';
+import { OpenBankError, type Balance, type OpenBankClientConfig, type PaymentRequest, type PaymentResult } from './core/types';
 
 export type { OpenBankClientConfig };
 
@@ -14,13 +14,16 @@ export class OpenBankClient {
 
   constructor(config: OpenBankClientConfig) {
     if (config.adapter !== 'mtn-momo') {
-      throw new Error(`Unsupported adapter: ${config.adapter}`);
+      throw new OpenBankError('INVALID_CONFIGURATION', `Unsupported adapter: ${config.adapter}`);
     }
 
     this.adapter = new MtnMomoAdapter({
       subscriptionKey: config.subscriptionKey,
       callbackHost: config.callbackHost,
       environment: config.environment,
+      baseUrl: config.baseUrl,
+      apiUser: config.apiUser,
+      apiKey: config.apiKey,
     });
 
     this.collections = {

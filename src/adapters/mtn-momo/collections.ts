@@ -9,7 +9,7 @@ async function withMtnErrorMapping<T>(operation: () => Promise<T>): Promise<T> {
   } catch (error) {
     if (error instanceof HttpError) {
       const parsed = parseMtnErrorBody(error.body);
-      throw mapMtnError(parsed?.code ?? 'UNKNOWN_ERROR', parsed?.message ?? error.message);
+      throw mapMtnError(parsed?.code ?? 'UNKNOWN_ERROR', parsed?.message ?? error.message, error.status);
     }
     throw error;
   }
