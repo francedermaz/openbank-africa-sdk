@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented in this file.
 
-## [Unreleased]
+## [0.2.0] - 2026-07-29
 
 ### Added
 - Production support for the MTN MoMo adapter: `baseUrl`/`apiUser`/`apiKey`/`targetEnvironment` config, since MTN has no self-service provisioning API in production (credentials come from the MTN Partner Portal after KYC approval) and no single production base URL (MTN runs a separate host per market). `targetEnvironment` is MTN's wire-level per-market identifier (e.g. `mtnrwanda`) — distinct from the SDK's own `environment: 'production'` mode switch, which is never sent on the wire. Sandbox behavior is unchanged. Unverified against a real MTN production tenant — see the README's Production section.
