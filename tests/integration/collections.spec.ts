@@ -17,7 +17,9 @@ describeIfCredentials('OpenBankClient against the real MTN MoMo sandbox', () => 
     await client.authenticate();
     const payment = await client.collections.requestToPay({
       amount: 5000,
-      currency: 'RWF',
+      // MTN's sandbox environment only accepts EUR as the test currency,
+      // regardless of the target country — RWF is a production-only value.
+      currency: 'EUR',
       phoneNumber: '250788123456',
       externalId: `order-${Date.now()}`,
       payerMessage: 'Integration test payment',

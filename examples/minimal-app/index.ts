@@ -12,7 +12,10 @@ async function main(): Promise<void> {
 
   const payment = await client.collections.requestToPay({
     amount: 5000,
-    currency: 'RWF',
+    // MTN's sandbox environment only accepts EUR as the test currency,
+    // regardless of the target country — use the real local currency
+    // (e.g. RWF) once you switch environment to 'production'.
+    currency: 'EUR',
     phoneNumber: '250788123456',
     externalId: `order-${Date.now()}`,
     payerMessage: 'Payment for order',

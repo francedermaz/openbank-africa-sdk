@@ -18,3 +18,7 @@ npm run example
 ```
 
 Sandbox user/key provisioning happens automatically on first `authenticate()` call — no manual setup beyond the Primary Key above.
+
+## Note on currency
+
+MTN's sandbox only accepts `EUR` as the payment currency, regardless of the target country — this example hardcodes it for that reason. Switch to the real local currency (e.g. `RWF`) once you move to `environment: 'production'`.
