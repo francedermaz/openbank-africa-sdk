@@ -17,10 +17,8 @@ See [`docs/spec.md`](./docs/spec.md) for the full technical spec (architecture, 
 
 ## Installation
 
-Not yet published to npm. Install straight from GitHub for now:
-
 ```bash
-npm install github:francedermaz/openbank-africa-sdk
+npm install openbank-africa-sdk
 ```
 
 ## Usage

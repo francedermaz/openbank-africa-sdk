@@ -4,13 +4,22 @@
   "description": "The open-source React Native SDK for African mobile money & open banking APIs.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/francedermaz/openbank-africa-sdk.git"
+    "url": "git+https://github.com/francedermaz/openbank-africa-sdk.git"
   },
-  "keywords": ["react-native", "mobile-money", "mtn-momo", "open-banking", "africa", "fintech"],
+  "keywords": [
+    "react-native",
+    "mobile-money",
+    "mtn-momo",
+    "open-banking",
+    "africa",
+    "fintech"
+  ],
   "engines": {
     "node": ">=18"
   },
