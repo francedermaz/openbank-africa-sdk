@@ -1,5 +1,6 @@
 import { MtnMomoAdapter } from '../../../../src/adapters/mtn-momo';
-import { HttpClient } from '../../../../src/core/client';
+import { HttpClient, HttpError } from '../../../../src/core/client';
+import { OpenBankError } from '../../../../src/core/types';
 
 function createFakeHttpClient(): jest.Mocked<Pick<HttpClient, 'get' | 'post'>> {
   return {
@@ -64,5 +65,22 @@ describe('MtnMomoAdapter', () => {
 
     // Then
     expect(balance).toEqual({ availableBalance: 1000, currency: 'RWF' });
+  });
+
+  it('should reject with a mapped OpenBankError (not the raw HttpError) when a request fails after authenticate', async () => {
+    // Given
+    const httpClient = createFakeHttpClient();
+    httpClient.get.mockRejectedValue(
+      new HttpError(400, JSON.stringify({ code: 'PAYER_NOT_FOUND', message: 'Payer could not be found' })),
+    );
+    const adapter = new MtnMomoAdapter(config, httpClient as unknown as HttpClient);
+    await adapter.authenticate();
+
+    // When / Then
+    await expect(adapter.getBalance()).rejects.toBeInstanceOf(OpenBankError);
+    await expect(adapter.getBalance()).rejects.toMatchObject({
+      code: 'PAYER_NOT_FOUND',
+      message: 'Payer could not be found',
+    });
   });
 });

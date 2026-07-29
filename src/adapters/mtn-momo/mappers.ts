@@ -11,19 +11,23 @@ const MTN_ERROR_CODES: readonly SdkErrorCode[] = [
   'INTERNAL_PROCESSING_ERROR',
 ];
 
-export function mapMtnStatusResponse(referenceId: string, response: { status: string }): PaymentResult {
+export function mapMtnStatusResponse(
+  referenceId: string,
+  response: { status: string; reason?: string },
+): PaymentResult {
   const status = VALID_STATUSES.includes(response.status as PaymentStatus)
     ? (response.status as PaymentStatus)
     : 'FAILED';
 
-  return { referenceId, status };
+  return response.reason ? { referenceId, status, reason: response.reason } : { referenceId, status };
 }
 
 export function mapMtnBalanceResponse(response: { availableBalance: string; currency: string }): Balance {
-  return {
-    availableBalance: Number(response.availableBalance),
-    currency: response.currency,
-  };
+  const availableBalance = Number(response.availableBalance);
+  if (Number.isNaN(availableBalance)) {
+    throw new OpenBankError('UNKNOWN_ERROR', `Invalid balance value received from MTN: "${response.availableBalance}"`);
+  }
+  return { availableBalance, currency: response.currency };
 }
 
 export function mapMtnError(reason: string, message: string): OpenBankError {

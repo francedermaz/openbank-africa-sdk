@@ -1,5 +1,6 @@
 import { getBalance, getStatus, requestToPay } from '../../../../src/adapters/mtn-momo/collections';
-import { HttpClient } from '../../../../src/core/client';
+import { HttpClient, HttpError } from '../../../../src/core/client';
+import { OpenBankError } from '../../../../src/core/types';
 
 describe('collections', () => {
   const context = { token: 'token-abc', subscriptionKey: 'sub-1', environment: 'sandbox' as const };
@@ -45,6 +46,29 @@ describe('collections', () => {
         }),
       );
     });
+
+    it('should reject with a mapped OpenBankError when the underlying request fails', async () => {
+      // Given
+      httpClient.post.mockRejectedValue(
+        new HttpError(400, JSON.stringify({ code: 'PAYER_NOT_FOUND', message: 'Payer could not be found' })),
+      );
+      const payment = {
+        amount: 5000,
+        currency: 'RWF',
+        phoneNumber: '250788123456',
+        externalId: 'order-123',
+        payerMessage: 'Payment for order #123',
+      };
+
+      // When / Then
+      await expect(requestToPay(httpClient as unknown as HttpClient, context, payment)).rejects.toMatchObject({
+        code: 'PAYER_NOT_FOUND',
+        message: 'Payer could not be found',
+      });
+      await expect(requestToPay(httpClient as unknown as HttpClient, context, payment)).rejects.toBeInstanceOf(
+        OpenBankError,
+      );
+    });
   });
 
   describe('getStatus', () => {
@@ -60,6 +84,22 @@ describe('collections', () => {
       expect(httpClient.get).toHaveBeenCalledWith(
         '/collection/v1_0/requesttopay/ref-1',
         expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer token-abc' }) }),
+      );
+    });
+
+    it('should reject with a mapped OpenBankError when the underlying request fails', async () => {
+      // Given
+      httpClient.get.mockRejectedValue(
+        new HttpError(400, JSON.stringify({ code: 'PAYER_NOT_FOUND', message: 'Payer could not be found' })),
+      );
+
+      // When / Then
+      await expect(getStatus(httpClient as unknown as HttpClient, context, 'ref-1')).rejects.toMatchObject({
+        code: 'PAYER_NOT_FOUND',
+        message: 'Payer could not be found',
+      });
+      await expect(getStatus(httpClient as unknown as HttpClient, context, 'ref-1')).rejects.toBeInstanceOf(
+        OpenBankError,
       );
     });
   });
@@ -78,6 +118,20 @@ describe('collections', () => {
         '/collection/v1_0/account/balance',
         expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer token-abc' }) }),
       );
+    });
+
+    it('should reject with a mapped OpenBankError when the underlying request fails', async () => {
+      // Given
+      httpClient.get.mockRejectedValue(
+        new HttpError(400, JSON.stringify({ code: 'PAYER_NOT_FOUND', message: 'Payer could not be found' })),
+      );
+
+      // When / Then
+      await expect(getBalance(httpClient as unknown as HttpClient, context)).rejects.toMatchObject({
+        code: 'PAYER_NOT_FOUND',
+        message: 'Payer could not be found',
+      });
+      await expect(getBalance(httpClient as unknown as HttpClient, context)).rejects.toBeInstanceOf(OpenBankError);
     });
   });
 });

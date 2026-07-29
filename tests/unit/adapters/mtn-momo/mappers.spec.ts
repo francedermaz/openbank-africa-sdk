@@ -23,6 +23,17 @@ describe('mapMtnStatusResponse', () => {
     // Then
     expect(result).toEqual({ referenceId: 'ref-2', status: 'FAILED' });
   });
+
+  it('should include the reason in the result when the raw response has one', () => {
+    // Given
+    const response = { status: 'FAILED', reason: 'PAYER_NOT_FOUND' };
+
+    // When
+    const result = mapMtnStatusResponse('ref-3', response);
+
+    // Then
+    expect(result).toEqual({ referenceId: 'ref-3', status: 'FAILED', reason: 'PAYER_NOT_FOUND' });
+  });
 });
 
 describe('mapMtnBalanceResponse', () => {
@@ -35,6 +46,17 @@ describe('mapMtnBalanceResponse', () => {
 
     // Then
     expect(result).toEqual({ availableBalance: 12345.67, currency: 'RWF' });
+  });
+
+  it('should throw OpenBankError with code UNKNOWN_ERROR when availableBalance is not a valid number', () => {
+    // Given
+    const response = { availableBalance: 'not-a-number', currency: 'RWF' };
+
+    // When / Then
+    expect(() => mapMtnBalanceResponse(response)).toThrow(OpenBankError);
+    expect(() => mapMtnBalanceResponse(response)).toThrow(
+      expect.objectContaining({ code: 'UNKNOWN_ERROR' }),
+    );
   });
 });
 

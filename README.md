@@ -17,7 +17,7 @@ import { OpenBankClient } from 'openbank-africa-sdk';
 
 const client = new OpenBankClient({
   adapter: 'mtn-momo',
-  subscriptionKey: process.env.MTN_SUBSCRIPTION_KEY,
+  subscriptionKey: process.env.MTN_SUBSCRIPTION_KEY ?? '',
   callbackHost: 'https://my-app.com/webhooks/momo',
   environment: 'sandbox',
 });

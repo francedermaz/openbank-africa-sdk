@@ -19,6 +19,7 @@ export type PaymentStatus = 'PENDING' | 'SUCCESSFUL' | 'FAILED';
 export interface PaymentResult {
   referenceId: string;
   status: PaymentStatus;
+  reason?: string;
 }
 
 export interface Balance {

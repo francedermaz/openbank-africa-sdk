@@ -45,6 +45,7 @@ describe('HttpClient', () => {
 
       // When / Then
       await expect(client.get('/path')).rejects.toThrow(HttpError);
+      await expect(client.get('/path')).rejects.toMatchObject({ status: 404, body: 'Not Found' });
     });
   });
 
