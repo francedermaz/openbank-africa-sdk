@@ -1,17 +1,25 @@
 import { OpenBankClient } from '../../src/OpenBankClient';
+import { OpenBankError } from '../../src/core/types';
 
 describe('OpenBankClient', () => {
-  it('should throw for an unsupported adapter', () => {
-    // Given / When / Then
-    expect(
-      () =>
-        new OpenBankClient({
-          adapter: 'unknown-adapter' as unknown as 'mtn-momo',
-          subscriptionKey: 'sub-1',
-          callbackHost: 'https://example.com/webhooks',
-          environment: 'sandbox',
-        }),
-    ).toThrow('Unsupported adapter: unknown-adapter');
+  it('should throw an OpenBankError with code INVALID_CONFIGURATION for an unsupported adapter', () => {
+    // Given / When
+    let caught: unknown;
+    try {
+      new OpenBankClient({
+        adapter: 'unknown-adapter' as unknown as 'mtn-momo',
+        subscriptionKey: 'sub-1',
+        callbackHost: 'https://example.com/webhooks',
+        environment: 'sandbox',
+      });
+    } catch (error) {
+      caught = error;
+    }
+
+    // Then
+    expect(caught).toBeInstanceOf(OpenBankError);
+    expect((caught as OpenBankError).code).toBe('INVALID_CONFIGURATION');
+    expect((caught as OpenBankError).message).toBe('Unsupported adapter: unknown-adapter');
   });
 
   it('should expose a collections namespace backed by the configured adapter', () => {

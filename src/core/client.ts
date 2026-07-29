@@ -1,10 +1,16 @@
 export interface HttpRequestOptions {
   headers?: Record<string, string>;
   body?: unknown;
+  timeoutMs?: number;
 }
 
+const DEFAULT_TIMEOUT_MS = 30_000;
+
 export class HttpClient {
-  constructor(private readonly baseUrl: string) {}
+  constructor(
+    private readonly baseUrl: string,
+    private readonly defaultTimeoutMs: number = DEFAULT_TIMEOUT_MS,
+  ) {}
 
   async get<T>(path: string, options: HttpRequestOptions = {}): Promise<T> {
     return this.request<T>('GET', path, options);
@@ -15,22 +21,39 @@ export class HttpClient {
   }
 
   private async request<T>(method: string, path: string, options: HttpRequestOptions): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      body: options.body ? JSON.stringify(options.body) : undefined,
-    });
+    const timeoutMs = options.timeoutMs ?? this.defaultTimeoutMs;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-    const text = await response.text();
+    try {
+      const response = await fetch(`${this.baseUrl}${path}`, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+        body: options.body ? JSON.stringify(options.body) : undefined,
+        signal: controller.signal,
+      });
 
-    if (!response.ok) {
-      throw new HttpError(response.status, text);
+      // Fetch resolves once headers arrive; the body is still streaming, so
+      // the abort signal (and this timeout) must stay armed through the
+      // text() read too — a server that stalls mid-body must still time out.
+      const text = await response.text();
+
+      if (!response.ok) {
+        throw new HttpError(response.status, text);
+      }
+
+      return (text ? JSON.parse(text) : undefined) as T;
+    } catch (error) {
+      if (controller.signal.aborted) {
+        throw new HttpError(0, `Request timed out after ${timeoutMs}ms`);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timer);
     }
-
-    return (text ? JSON.parse(text) : undefined) as T;
   }
 }
 

@@ -78,4 +78,20 @@ describe('mapMtnError', () => {
     // Then
     expect(error.code).toBe('UNKNOWN_ERROR');
   });
+
+  it('should carry the HTTP status through onto the mapped error when provided', () => {
+    // Given / When
+    const error = mapMtnError('PAYER_NOT_FOUND', 'Payer could not be found', 401);
+
+    // Then
+    expect(error.httpStatus).toBe(401);
+  });
+
+  it('should map INVALID_CURRENCY to its own code instead of UNKNOWN_ERROR', () => {
+    // Given / When
+    const error = mapMtnError('INVALID_CURRENCY', 'Currency not supported');
+
+    // Then
+    expect(error.code).toBe('INVALID_CURRENCY');
+  });
 });

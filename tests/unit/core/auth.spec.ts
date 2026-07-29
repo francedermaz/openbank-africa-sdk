@@ -58,4 +58,19 @@ describe('TokenManager', () => {
 
     nowSpy.mockRestore();
   });
+
+  it('should request a new token after invalidate() even if the cached one has not expired', async () => {
+    // Given
+    httpClient.post.mockResolvedValue({ access_token: 'token-abc', token_type: 'Bearer', expires_in: 3600 });
+    await tokenManager.getToken(credentials);
+    httpClient.post.mockResolvedValue({ access_token: 'token-def', token_type: 'Bearer', expires_in: 3600 });
+
+    // When
+    tokenManager.invalidate();
+    const token = await tokenManager.getToken(credentials);
+
+    // Then
+    expect(token).toBe('token-def');
+    expect(httpClient.post).toHaveBeenCalledTimes(2);
+  });
 });

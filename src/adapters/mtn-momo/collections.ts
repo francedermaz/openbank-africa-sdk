@@ -1,15 +1,18 @@
 import { HttpClient, HttpError } from '../../core/client';
-import type { Balance, PaymentRequest, PaymentResult } from '../../core/types';
+import { OpenBankError, type Balance, type PaymentRequest, type PaymentResult } from '../../core/types';
 import { generateUuidV4 } from '../../core/uuid';
 import { mapMtnBalanceResponse, mapMtnError, mapMtnStatusResponse } from './mappers';
 
-async function withMtnErrorMapping<T>(operation: () => Promise<T>): Promise<T> {
+export async function withMtnErrorMapping<T>(operation: () => Promise<T>): Promise<T> {
   try {
     return await operation();
   } catch (error) {
     if (error instanceof HttpError) {
+      if (error.status === 0) {
+        throw new OpenBankError('TIMEOUT', error.body, error.status);
+      }
       const parsed = parseMtnErrorBody(error.body);
-      throw mapMtnError(parsed?.code ?? 'UNKNOWN_ERROR', parsed?.message ?? error.message);
+      throw mapMtnError(parsed?.code ?? 'UNKNOWN_ERROR', parsed?.message ?? error.message, error.status);
     }
     throw error;
   }
@@ -26,13 +29,14 @@ function parseMtnErrorBody(body: string): { code?: string; message?: string } | 
 export interface CollectionsRequestContext {
   token: string;
   subscriptionKey: string;
-  environment: 'sandbox' | 'production';
+  /** MTN's wire-level X-Target-Environment value, e.g. 'sandbox' or 'mtnrwanda'. */
+  targetEnvironment: string;
 }
 
 function buildHeaders(context: CollectionsRequestContext, referenceId?: string): Record<string, string> {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${context.token}`,
-    'X-Target-Environment': context.environment,
+    'X-Target-Environment': context.targetEnvironment,
     'Ocp-Apim-Subscription-Key': context.subscriptionKey,
   };
 
@@ -47,10 +51,9 @@ export async function requestToPay(
   httpClient: HttpClient,
   context: CollectionsRequestContext,
   payment: PaymentRequest,
+  referenceId: string = generateUuidV4(),
 ): Promise<PaymentResult> {
   return withMtnErrorMapping(async () => {
-    const referenceId = generateUuidV4();
-
     await httpClient.post<void>('/collection/v1_0/requesttopay', {
       headers: buildHeaders(context, referenceId),
       body: {

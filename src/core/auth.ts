@@ -42,4 +42,9 @@ export class TokenManager {
     this.expiresAt = now + response.expires_in * 1000 - TOKEN_EXPIRY_BUFFER_MS;
     return this.cachedToken;
   }
+
+  invalidate(): void {
+    this.cachedToken = null;
+    this.expiresAt = 0;
+  }
 }
