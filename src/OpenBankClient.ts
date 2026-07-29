@@ -24,6 +24,7 @@ export class OpenBankClient {
       baseUrl: config.baseUrl,
       apiUser: config.apiUser,
       apiKey: config.apiKey,
+      targetEnvironment: config.targetEnvironment,
     });
 
     this.collections = {

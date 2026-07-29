@@ -3,7 +3,7 @@ import { HttpClient, HttpError } from '../../../../src/core/client';
 import { OpenBankError } from '../../../../src/core/types';
 
 describe('collections', () => {
-  const context = { token: 'token-abc', subscriptionKey: 'sub-1', environment: 'sandbox' as const };
+  const context = { token: 'token-abc', subscriptionKey: 'sub-1', targetEnvironment: 'sandbox' };
   let httpClient: jest.Mocked<Pick<HttpClient, 'get' | 'post'>>;
 
   beforeEach(() => {

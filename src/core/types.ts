@@ -12,6 +12,13 @@ export interface OpenBankClientConfig {
   baseUrl?: string;
   apiUser?: string;
   apiKey?: string;
+  /**
+   * Required when environment is 'production'. MTN's wire-level
+   * X-Target-Environment value for your market (e.g. 'mtnrwanda',
+   * 'mtnuganda', 'mtnghana') — NOT the literal string 'production'.
+   * Sandbox always uses 'sandbox' automatically; ignored there.
+   */
+  targetEnvironment?: string;
 }
 
 export interface PaymentRequest {
@@ -52,6 +59,7 @@ export type SdkErrorCode =
   | 'INTERNAL_PROCESSING_ERROR'
   | 'INVALID_CONFIGURATION'
   | 'NOT_AUTHENTICATED'
+  | 'TIMEOUT'
   | 'UNKNOWN_ERROR';
 
 export class OpenBankError extends Error {

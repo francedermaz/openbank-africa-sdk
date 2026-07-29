@@ -53,21 +53,24 @@ const balance = await client.collections.getBalance();
 
 ## Production
 
-MTN exposes no self-service credential provisioning in production — `apiUser`, `apiKey`, and your production base URL are issued through the MTN Partner Portal after your KYC application is approved (see [`docs/spec.md`](./docs/spec.md)). Pass them in explicitly:
+MTN exposes no self-service credential provisioning in production. `apiUser`, `apiKey`, and your production base URL are issued through the MTN Partner Portal after your KYC application is approved — there is no single production base URL, since MTN runs a separate host per market. Pass everything in explicitly:
 
 ```typescript
 const client = new OpenBankClient({
   adapter: 'mtn-momo',
   subscriptionKey: process.env.MTN_SUBSCRIPTION_KEY ?? '',
-  callbackHost: 'https://my-app.com/webhooks/momo',
+  callbackHost: 'https://my-app.com/webhooks/momo', // sandbox provisioning only — see note below
   environment: 'production',
   baseUrl: process.env.MTN_BASE_URL ?? '', // from the MTN Partner Portal
   apiUser: process.env.MTN_API_USER ?? '', // from the MTN Partner Portal
   apiKey: process.env.MTN_API_KEY ?? '', // from the MTN Partner Portal
+  targetEnvironment: process.env.MTN_TARGET_ENVIRONMENT ?? '', // e.g. 'mtnrwanda' — NOT 'production'
 });
 ```
 
-`client.authenticate()` skips auto-provisioning in production and uses these directly.
+`client.authenticate()` skips auto-provisioning in production and uses these directly. Note `callbackHost` only affects sandbox's auto-provisioning call — in production, your callback host is configured directly on the Partner Portal when you create your API user, so this field has no effect there; it's still required by the type for sandbox's sake.
+
+> ⚠️ Production support has not yet been exercised against a real MTN production tenant — treat it as unverified until someone runs a real transaction through it.
 
 ## Error handling
 

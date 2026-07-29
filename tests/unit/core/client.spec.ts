@@ -11,6 +11,10 @@ describe('HttpClient', () => {
     global.fetch = fetchMock as unknown as typeof fetch;
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   describe('get', () => {
     it('should return parsed JSON when the response is ok', async () => {
       // Given
@@ -71,7 +75,6 @@ describe('HttpClient', () => {
 
       // Then
       await assertion;
-      jest.useRealTimers();
     });
   });
 

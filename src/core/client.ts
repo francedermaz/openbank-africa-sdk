@@ -25,9 +25,8 @@ export class HttpClient {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-    let response: Response;
     try {
-      response = await fetch(`${this.baseUrl}${path}`, {
+      const response = await fetch(`${this.baseUrl}${path}`, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -36,22 +35,25 @@ export class HttpClient {
         body: options.body ? JSON.stringify(options.body) : undefined,
         signal: controller.signal,
       });
+
+      // Fetch resolves once headers arrive; the body is still streaming, so
+      // the abort signal (and this timeout) must stay armed through the
+      // text() read too — a server that stalls mid-body must still time out.
+      const text = await response.text();
+
+      if (!response.ok) {
+        throw new HttpError(response.status, text);
+      }
+
+      return (text ? JSON.parse(text) : undefined) as T;
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
+      if (controller.signal.aborted) {
         throw new HttpError(0, `Request timed out after ${timeoutMs}ms`);
       }
       throw error;
     } finally {
       clearTimeout(timer);
     }
-
-    const text = await response.text();
-
-    if (!response.ok) {
-      throw new HttpError(response.status, text);
-    }
-
-    return (text ? JSON.parse(text) : undefined) as T;
   }
 }
 
