@@ -87,12 +87,13 @@
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
     "outDir": "dist",
-    "rootDir": "src",
     "moduleResolution": "node"
   },
   "include": ["src", "tests", "examples"]
 }
 ```
+
+`rootDir` is intentionally omitted here — the base config type-checks `src`, `tests`, and `examples` together (used by `npm run lint` and the editor), so a fixed `rootDir: "src"` would reject files under `tests/`. `tsconfig.build.json` below only includes `src`, so TypeScript infers `rootDir` as `src` there automatically and `dist/` still comes out as `dist/index.js`, not `dist/src/index.js`.
 
 - [ ] **Step 3: Create `tsconfig.build.json`**
 
@@ -640,9 +641,13 @@ describe('TokenManager', () => {
 
   it('should request a new token after the cached one expires', async () => {
     // Given
-    httpClient.post.mockResolvedValue({ access_token: 'token-abc', token_type: 'Bearer', expires_in: 1 });
+    httpClient.post.mockResolvedValue({ access_token: 'token-abc', token_type: 'Bearer', expires_in: 10 });
     await tokenManager.getToken(credentials);
-    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(Date.now() + 10_000);
+    // 10s expiry minus the 5s buffer means the cached token is treated as expired
+    // after 5s; advancing the clock 6s crosses that buffered boundary while
+    // staying under the raw 10s expiry, so this genuinely exercises the buffer
+    // logic instead of a token that's already "expired" the instant it's cached.
+    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(Date.now() + 6_000);
     httpClient.post.mockResolvedValue({ access_token: 'token-def', token_type: 'Bearer', expires_in: 3600 });
 
     // When
