@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.2.1] - 2026-07-29
+
+### Changed
+- README: point installation at `npm install openbank-africa-sdk` now that the package is published.
+- `package.json`: normalized `repository.url` (`git+https://...`) and array formatting per `npm pkg fix`.
+
 ## [0.2.0] - 2026-07-29
 
 ### Added

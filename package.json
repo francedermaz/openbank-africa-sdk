@@ -1,6 +1,6 @@
 {
   "name": "openbank-africa-sdk",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "The open-source React Native SDK for African mobile money & open banking APIs.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
