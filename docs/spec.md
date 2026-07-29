@@ -179,14 +179,14 @@ Same pattern as v1: MTN's own errors (`RESOURCE_NOT_FOUND`, `APPROVAL_REJECTED`,
 
 ## 10. Getting started checklist — real order of work
 
-1. [ ] Register at momodeveloper.mtn.com (frictionless, no bank account required)
-2. [ ] Subscribe to the "Collections" product to get the Primary Key
-3. [ ] Test the manual provisioning flow (Postman) before coding, to validate against the real API
-4. [ ] Set up the repo with the structure from section 3
-5. [ ] Implement `core/client.ts`, `core/auth.ts`, `adapters/mtn-momo/sandbox.ts`
-6. [ ] Implement Request to Pay + status + balance, with tests
-7. [ ] README + minimal example + CI
-8. [ ] Public v0.1 release on GitHub
+1. [x] Register at momodeveloper.mtn.com (frictionless, no bank account required)
+2. [x] Subscribe to the "Collections" product to get the Primary Key
+3. [x] Test the manual provisioning flow (Postman) before coding, to validate against the real API
+4. [x] Set up the repo with the structure from section 3
+5. [x] Implement `core/client.ts`, `core/auth.ts`, `adapters/mtn-momo/sandbox.ts`
+6. [x] Implement Request to Pay + status + balance, with tests
+7. [x] README + minimal example + CI
+8. [x] Public v0.1 release on GitHub
 9. [ ] (Phase 2) Add the Airtel Money adapter, following the same architecture
 
 ## 11. Key difference vs. v1 (BK)

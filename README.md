@@ -6,7 +6,7 @@
 
 ## Status
 
-🚧 In development — MVP v1.0 on MTN MoMo's **Collections** product (Request to Pay, transaction status, balance).
+✅ **v0.1.0** — MVP on MTN MoMo's **Collections** product (Request to Pay, transaction status, balance), validated end-to-end against the real MTN sandbox.
 
 See [`docs/spec.md`](./docs/spec.md) for the full technical spec (architecture, endpoints, types, checklist).
 
