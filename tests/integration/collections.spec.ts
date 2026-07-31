@@ -1,16 +1,16 @@
 import { OpenBankClient } from '../../src';
 
-const subscriptionKey = process.env.MTN_SUBSCRIPTION_KEY;
+const subscriptionKey = process.env.MTN_COLLECTIONS_KEY;
 const describeIfCredentials = subscriptionKey ? describe : describe.skip;
 
-describeIfCredentials('OpenBankClient against the real MTN MoMo sandbox', () => {
+describeIfCredentials('Collections against the real MTN MoMo sandbox', () => {
   it('should authenticate, request a payment, and read its status', async () => {
     // Given
     const client = new OpenBankClient({
       adapter: 'mtn-momo',
-      subscriptionKey: subscriptionKey as string,
-      callbackHost: process.env.MTN_CALLBACK_HOST ?? 'https://example.com/webhooks/momo',
       environment: 'sandbox',
+      callbackHost: process.env.MTN_CALLBACK_HOST ?? 'https://example.com/webhooks/momo',
+      products: { collections: { subscriptionKey: subscriptionKey as string } },
     });
 
     // When

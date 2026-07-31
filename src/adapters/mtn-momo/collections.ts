@@ -1,55 +1,13 @@
-import { HttpClient, HttpError } from '../../core/client';
-import { OpenBankError, type Balance, type PaymentRequest, type PaymentResult } from '../../core/types';
+import { HttpClient } from '../../core/client';
+import { type Balance, type PaymentRequest, type PaymentResult } from '../../core/types';
 import { generateUuidV4 } from '../../core/uuid';
-import { mapMtnBalanceResponse, mapMtnError, mapMtnStatusResponse } from './mappers';
-
-export async function withMtnErrorMapping<T>(operation: () => Promise<T>): Promise<T> {
-  try {
-    return await operation();
-  } catch (error) {
-    if (error instanceof HttpError) {
-      if (error.status === 0) {
-        throw new OpenBankError('TIMEOUT', error.body, error.status);
-      }
-      const parsed = parseMtnErrorBody(error.body);
-      throw mapMtnError(parsed?.code ?? 'UNKNOWN_ERROR', parsed?.message ?? error.message, error.status);
-    }
-    throw error;
-  }
-}
-
-function parseMtnErrorBody(body: string): { code?: string; message?: string } | null {
-  try {
-    return JSON.parse(body) as { code?: string; message?: string };
-  } catch {
-    return null;
-  }
-}
-
-export interface CollectionsRequestContext {
-  token: string;
-  subscriptionKey: string;
-  /** MTN's wire-level X-Target-Environment value, e.g. 'sandbox' or 'mtnrwanda'. */
-  targetEnvironment: string;
-}
-
-function buildHeaders(context: CollectionsRequestContext, referenceId?: string): Record<string, string> {
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${context.token}`,
-    'X-Target-Environment': context.targetEnvironment,
-    'Ocp-Apim-Subscription-Key': context.subscriptionKey,
-  };
-
-  if (referenceId) {
-    headers['X-Reference-Id'] = referenceId;
-  }
-
-  return headers;
-}
+import { withMtnErrorMapping } from './errors';
+import { mapMtnBalanceResponse, mapMtnStatusResponse } from './mappers';
+import { buildHeaders, type MtnRequestContext } from './session';
 
 export async function requestToPay(
   httpClient: HttpClient,
-  context: CollectionsRequestContext,
+  context: MtnRequestContext,
   payment: PaymentRequest,
   referenceId: string = generateUuidV4(),
 ): Promise<PaymentResult> {
@@ -72,7 +30,7 @@ export async function requestToPay(
 
 export async function getStatus(
   httpClient: HttpClient,
-  context: CollectionsRequestContext,
+  context: MtnRequestContext,
   referenceId: string,
 ): Promise<PaymentResult> {
   return withMtnErrorMapping(async () => {
@@ -85,7 +43,7 @@ export async function getStatus(
   });
 }
 
-export async function getBalance(httpClient: HttpClient, context: CollectionsRequestContext): Promise<Balance> {
+export async function getBalance(httpClient: HttpClient, context: MtnRequestContext): Promise<Balance> {
   return withMtnErrorMapping(async () => {
     const response = await httpClient.get<{ availableBalance: string; currency: string }>(
       '/collection/v1_0/account/balance',
