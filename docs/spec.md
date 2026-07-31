@@ -279,7 +279,17 @@ MTN's own errors (`RESOURCE_NOT_FOUND`, `RESOURCE_ALREADY_EXIST`, `APPROVAL_REJE
 ## 9. Testing
 
 - Unit tests against mocks of MTN's responses.
-- Integration tests against the real `sandbox.momodeveloper.mtn.com`, using the automatic provisioning flow (no need to request credentials from anyone, they are generated on the fly in sandbox).
+- Integration tests against the real `sandbox.momodeveloper.mtn.com`, using the automatic provisioning flow (no need to request credentials from anyone, they are generated on the fly in sandbox). They skip themselves unless `MTN_COLLECTIONS_KEY` / `MTN_DISBURSEMENTS_KEY` are set, and CI does not run them — they are a manual verification tool.
+
+### Sandbox behaviour worth knowing
+
+Observed against the real sandbox, and the reason several tests are shaped the way they are:
+
+- **Provisioning is eventually consistent.** A freshly created API user cannot query its account balance immediately — the read fails with `RESOURCE_NOT_FOUND` for a moment. Integration suites authenticate once in `beforeAll` and share the client rather than provisioning per test, which both avoids this and spends one API user instead of one per test.
+- **Every well-formed MSISDN reports as active.** `validateAccountHolder` answers `{ result: true }` for arbitrary numbers, so the sandbox cannot exercise the 404 → `{ isActive: false }` branch. That mapping is unit-tested only, deliberately.
+- **Transfers actually settle.** The disbursement wallet goes negative as payouts clear, so balance assertions must not require a positive number.
+- **The balance endpoint is intermittently unavailable.** Byte-identical requests across consecutive runs returned `200`, `RESOURCE_NOT_FOUND`, `INTERNAL_PROCESSING_ERROR`, `Authorization failed. Insufficient permissions.`, and `Access to target environment is forbidden.` — five distinct outcomes for the same call, on both products. The endpoint and path are correct (a direct probe returns `200` with a well-formed payload); the sandbox is simply not reliable enough to gate a test on, so `getBalance` is covered by unit tests only.
+- **Only `EUR` is accepted** as the currency, regardless of the target market.
 
 ## 10. Getting started checklist — real order of work
 
