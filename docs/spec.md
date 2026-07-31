@@ -14,19 +14,28 @@
 - Mobile money is the most used payment method in Rwanda, more than traditional banking. Greater real impact, better aligned with the government's "financial inclusion" agenda.
 - Node/PHP/Java wrappers for MTN MoMo already exist, but **none is a React Native client SDK**, and none unifies multiple providers (MTN + Airtel + banks) under a single interface. That's the real gap this project fills.
 
-## 2. MVP Scope (v1.0)
+## 2. Scope
 
-Included, on the **Collections** product (the most relevant one for an app that collects payments):
+**Collections** (an app that collects payments):
 - Sandbox user & API key provisioning
 - OAuth2 authentication (Bearer token)
 - Request to Pay (charge a user)
 - Query transaction status
 - Query account balance
 
-Out of scope for v1.0 (left for v2):
-- Disbursements (pay users)
-- Remittances (cross-border transfers)
-- Airtel Money adapter (architecture prepared, not implemented)
+**Disbursements** (an app that pays users):
+- Transfer (pay a user)
+- Query transfer status
+- Query account balance
+- Validate account holder status (is this number a live MoMo account?)
+
+Considered and deliberately deferred:
+- **Deposit** — MTN documents it with the same request schema and nearly the same description as Transfer; the two are not meaningfully distinguished in their docs. `transfer` is the canonical verb and the one every existing MoMo library exposes, so implementing both would duplicate the public surface for a difference we could not explain to users. `Deposit-V1` vs `V2` differ only in the HTTP method MTN uses to call your callback URL (POST vs PUT) — irrelevant here, since this SDK polls rather than receiving callbacks.
+- **Refund** — genuinely distinct (carries `referenceIdToRefund`, no `payee`) and useful for marketplaces, but it bridges the two products and widens the test surface. Worth a follow-up.
+- **Remittances** — narrower audience than Collections/Disbursements.
+- **Collection Widget** — a hosted checkout; targets a different kind of integrator than this low-level SDK.
+- **`bc-authorize` / `GetUserInfoWithConsent`** — a separate OIDC/CIBA consent flow, not a variation on the Bearer-token flow this SDK implements.
+- **Airtel Money adapter** — architecture prepared, not implemented.
 
 ## 3. Architecture
 
@@ -34,15 +43,18 @@ Out of scope for v1.0 (left for v2):
 openbank-africa-sdk/
 ├── src/
 │   ├── core/
-│   │   ├── client.ts          # base HTTP client
-│   │   ├── auth.ts            # OAuth2 token management
-│   │   └── types.ts           # shared types
+│   │   ├── client.ts            # base HTTP client
+│   │   ├── auth.ts              # OAuth2 token management
+│   │   └── types.ts             # shared types
 │   ├── adapters/
 │   │   └── mtn-momo/
-│   │       ├── index.ts       # adapter implementation
-│   │       ├── sandbox.ts     # sandbox user/key provisioning
-│   │       ├── collections.ts # Request to Pay, balance, status
-│   │       └── mappers.ts     # mapping of MTN responses to common SDK types
+│   │       ├── index.ts         # adapter — wires products to operations
+│   │       ├── session.ts       # per-product credentials, token, context, 401 retry
+│   │       ├── errors.ts        # MTN failure → OpenBankError mapping
+│   │       ├── sandbox.ts       # sandbox user/key provisioning
+│   │       ├── collections.ts   # Request to Pay, status, balance
+│   │       ├── disbursements.ts # Transfer, status, balance, account holder
+│   │       └── mappers.ts       # mapping of MTN responses to common SDK types
 │   ├── OpenBankClient.ts
 │   └── index.ts
 ├── tests/
@@ -52,6 +64,8 @@ openbank-africa-sdk/
 ├── .github/workflows/ci.yml
 ├── README.md / CHANGELOG.md / LICENSE (MIT) / package.json
 ```
+
+**One session per product.** Collections and Disbursements are separate product subscriptions in the MoMo portal, each with its own primary key, its own API user/key pair, and its own token endpoint. `MtnProductSession` owns all of that for one product; `MtnMomoAdapter` holds one session per configured product and does nothing else. Tokens are never shared — a 401 on disbursements invalidates only the disbursements token.
 
 ## 4. Auth and provisioning — real API data
 
@@ -75,14 +89,17 @@ Headers:
 ```
 Returns the `apiKey` which, together with the `apiUser` (the X-Reference-Id), is used to generate tokens.
 
-**Step 3 — Get Bearer token (OAuth2)**:
+**Step 3 — Get Bearer token (OAuth2)**, per product:
 ```
-POST /collection/token/
+POST /collection/token/      (Collections)
+POST /disbursement/token/    (Disbursements)
 Headers:
   Authorization: Basic base64(apiUser:apiKey)
-  Ocp-Apim-Subscription-Key: <primary key>
+  Ocp-Apim-Subscription-Key: <that product's primary key>
 ```
-Returns `access_token`, `token_type`, `expires_in`. The SDK handles automatic refresh.
+Returns `access_token`, `token_type`, `expires_in`. The SDK handles automatic refresh, independently per product.
+
+> Steps 1 and 2 run **once per configured product** in sandbox, each with that product's own subscription key — so a client configured for both products provisions two distinct API users.
 
 ## 5. Collections product endpoints
 
@@ -118,6 +135,45 @@ GET /collection/v1_0/account/balance
 Headers: Authorization: Bearer <token>, X-Target-Environment: sandbox, Ocp-Apim-Subscription-Key
 ```
 
+## 5b. Disbursements product endpoints
+
+**Transfer** (pay a user):
+```
+POST /disbursement/v1_0/transfer
+Headers:
+  Authorization: Bearer <token>
+  X-Reference-Id: <UUID v4>
+  X-Target-Environment: sandbox
+  Ocp-Apim-Subscription-Key: <Disbursements primary key>
+Body:
+{
+  "amount": "5000",
+  "currency": "RWF",
+  "externalId": "payout-123",
+  "payee": { "partyIdType": "MSISDN", "partyId": "250788123456" },
+  "payerMessage": "Salary payment",
+  "payeeNote": "Your payout"
+}
+```
+Returns `202 Accepted` with an empty body — the transfer is queued, not settled. The one wire-level difference from Collections is `payee` instead of `payer`: money flows out, so the counterparty is the recipient. A duplicate `X-Reference-Id` answers `409 Conflict`.
+
+**Query transfer status**:
+```
+GET /disbursement/v1_0/transfer/{X-Reference-Id}
+```
+Returns status: `PENDING | SUCCESSFUL | FAILED`, with a `reason` on failure (e.g. `PAYEE_NOT_FOUND`, `NOT_ENOUGH_FUNDS`).
+
+**Query balance**:
+```
+GET /disbursement/v1_0/account/balance
+```
+
+**Validate account holder status**:
+```
+GET /disbursement/v1_0/accountholder/msisdn/{msisdn}/active
+```
+Answers `200` with `{ "result": true }` when the account holder is active, and `404` for a number MTN does not know. The SDK maps that 404 to `{ isActive: false }` rather than an error — for a call whose purpose is asking whether the account exists, that is the answer.
+
 ## 6. Proposed public interface
 
 ```typescript
@@ -125,30 +181,71 @@ import { OpenBankClient } from 'openbank-africa-sdk';
 
 const client = new OpenBankClient({
   adapter: 'mtn-momo',
-  subscriptionKey: process.env.MTN_SUBSCRIPTION_KEY,
-  callbackHost: 'https://my-app.com/webhooks/momo',
   environment: 'sandbox', // 'sandbox' | 'production'
+  callbackHost: 'https://my-app.com/webhooks/momo',
+  // Separate subscriptions in the MoMo portal, separate primary keys.
+  // At least one is required; configure only what you use.
+  products: {
+    collections: { subscriptionKey: process.env.MTN_COLLECTIONS_KEY },
+    disbursements: { subscriptionKey: process.env.MTN_DISBURSEMENTS_KEY },
+  },
 });
 
-// User/key are automatically provisioned in sandbox on first use
+// User/key are automatically provisioned in sandbox on first use,
+// once per configured product.
 await client.authenticate();
 
+// Collections — charge a user
 const payment = await client.collections.requestToPay({
   amount: 5000,
   currency: 'RWF',
-  phoneNumber: '250788123456',
+  phoneNumber: '250788123456', // the party being charged
   externalId: 'order-123',
   payerMessage: 'Payment for order #123',
 });
-
 const status = await client.collections.getStatus(payment.referenceId);
 const balance = await client.collections.getBalance();
+
+// Disbursements — pay a user
+const holder = await client.disbursements.validateAccountHolder('250788123456');
+const payout = await client.disbursements.transfer({
+  amount: 5000,
+  currency: 'RWF',
+  phoneNumber: '250788123456', // the party being paid
+  externalId: 'payout-123',
+  payeeNote: 'Your payout',
+});
+const payoutStatus = await client.disbursements.getStatus(payout.referenceId);
+const payoutBalance = await client.disbursements.getBalance();
 ```
+
+Calling into a product that was not configured rejects with `INVALID_CONFIGURATION` naming the missing key. Both namespaces are always present, so callers never hit `Cannot read property of undefined`.
 
 ## 7. Base types
 
 ```typescript
+interface MtnProductCredentials {
+  subscriptionKey: string;
+  apiUser?: string; // production only
+  apiKey?: string;  // production only
+}
+
+/** Charge a user. `phoneNumber` is the party being debited. */
 interface PaymentRequest {
+  amount: number;
+  currency: string;
+  phoneNumber: string;
+  externalId: string;
+  payerMessage?: string;
+  payeeNote?: string;
+}
+
+/**
+ * Pay a user. Structurally identical to PaymentRequest, but `phoneNumber` is
+ * the recipient rather than the payer. The separate name documents intent;
+ * TypeScript's structural typing does not enforce it.
+ */
+interface TransferRequest {
   amount: number;
   currency: string;
   phoneNumber: string;
@@ -160,22 +257,39 @@ interface PaymentRequest {
 interface PaymentResult {
   referenceId: string;
   status: 'PENDING' | 'SUCCESSFUL' | 'FAILED';
+  reason?: string;
 }
+
+type TransferResult = PaymentResult;
 
 interface Balance {
   availableBalance: number;
   currency: string;
 }
+
+interface AccountHolderStatus {
+  isActive: boolean;
+}
 ```
 
 ## 8. Error handling
 
-Same pattern as v1: MTN's own errors (`RESOURCE_NOT_FOUND`, `APPROVAL_REJECTED`, `EXPIRED`, `PAYER_NOT_FOUND`, `NOT_ALLOWED`, `INTERNAL_PROCESSING_ERROR`, per their documentation) are normalized into a common SDK error set.
+MTN's own errors (`RESOURCE_NOT_FOUND`, `RESOURCE_ALREADY_EXIST`, `APPROVAL_REJECTED`, `EXPIRED`, `PAYER_NOT_FOUND`, `PAYEE_NOT_FOUND`, `NOT_ENOUGH_FUNDS`, `PAYER_LIMIT_REACHED`, `SENDER_ACCOUNT_NOT_ACTIVE`, `NOT_ALLOWED`, `INTERNAL_PROCESSING_ERROR`, and the rest of their documented reference) are normalized into a common `OpenBankError` with a typed `SdkErrorCode`, plus SDK-only codes for misuse (`INVALID_CONFIGURATION`, `NOT_AUTHENTICATED`, `TIMEOUT`) and `UNKNOWN_ERROR` as the fallback.
 
 ## 9. Testing
 
 - Unit tests against mocks of MTN's responses.
-- Integration tests against the real `sandbox.momodeveloper.mtn.com`, using the automatic provisioning flow (no need to request credentials from anyone, they are generated on the fly in sandbox).
+- Integration tests against the real `sandbox.momodeveloper.mtn.com`, using the automatic provisioning flow (no need to request credentials from anyone, they are generated on the fly in sandbox). They skip themselves unless `MTN_COLLECTIONS_KEY` / `MTN_DISBURSEMENTS_KEY` are set, and CI does not run them — they are a manual verification tool.
+
+### Sandbox behaviour worth knowing
+
+Observed against the real sandbox, and the reason several tests are shaped the way they are:
+
+- **Provisioning is eventually consistent.** A freshly created API user cannot query its account balance immediately — the read fails with `RESOURCE_NOT_FOUND` for a moment. Integration suites authenticate once in `beforeAll` and share the client rather than provisioning per test, which both avoids this and spends one API user instead of one per test.
+- **Every well-formed MSISDN reports as active.** `validateAccountHolder` answers `{ result: true }` for arbitrary numbers, so the sandbox cannot exercise the 404 → `{ isActive: false }` branch. That mapping is unit-tested only, deliberately.
+- **Transfers actually settle.** The disbursement wallet goes negative as payouts clear, so balance assertions must not require a positive number.
+- **The balance endpoint is intermittently unavailable.** Byte-identical requests across consecutive runs returned `200`, `RESOURCE_NOT_FOUND`, `INTERNAL_PROCESSING_ERROR`, `Authorization failed. Insufficient permissions.`, and `Access to target environment is forbidden.` — five distinct outcomes for the same call, on both products. The endpoint and path are correct (a direct probe returns `200` with a well-formed payload); the sandbox is simply not reliable enough to gate a test on, so `getBalance` is covered by unit tests only.
+- **Only `EUR` is accepted** as the currency, regardless of the target market.
 
 ## 10. Getting started checklist — real order of work
 
@@ -187,7 +301,11 @@ Same pattern as v1: MTN's own errors (`RESOURCE_NOT_FOUND`, `APPROVAL_REJECTED`,
 6. [x] Implement Request to Pay + status + balance, with tests
 7. [x] README + minimal example + CI
 8. [x] Public v0.1 release on GitHub
-9. [ ] (Phase 2) Add the Airtel Money adapter, following the same architecture
+9. [x] Subscribe to the "Disbursements" product for its own Primary Key
+10. [x] Implement Transfer + status + balance + account holder validation, with tests
+11. [ ] Run the disbursements integration suite against the real sandbox
+12. [ ] (Phase 2) Add Refund, following the same architecture
+13. [ ] (Phase 2) Add the Airtel Money adapter, following the same architecture
 
 ## 11. Key difference vs. v1 (BK)
 

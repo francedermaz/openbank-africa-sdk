@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.3.0] - 2026-07-30
+
+### Added
+- **Disbursements support** for the MTN MoMo adapter, under a new `client.disbursements` namespace: `transfer` (pay a user), `getStatus`, `getBalance`, and `validateAccountHolder`. `transfer` mirrors `requestToPay` but sends the counterparty as `payee` rather than `payer`, since money flows out; it returns `PENDING` on MTN's `202 Accepted` and settles via `getStatus` polling.
+- `validateAccountHolder(phoneNumber)` checks a number is a registered, active MoMo account before you send money to it. A number MTN doesn't know answers HTTP 404, which resolves to `{ isActive: false }` rather than throwing — for a call that exists to ask whether an account exists, that is the answer, not a failure. Every other error still propagates.
+- Three MTN error codes that surface on disbursement transfers: `NOT_ENOUGH_FUNDS`, `PAYER_LIMIT_REACHED`, `SENDER_ACCOUNT_NOT_ACTIVE`. Previously they fell through to `UNKNOWN_ERROR`.
+- New exported types: `TransferRequest`, `TransferResult`, `AccountHolderStatus`, `CollectionsApi`, `DisbursementsApi`, `MtnProducts`, `MtnProductCredentials`, `MtnProductName`.
+- Integration test suite against the real sandbox for disbursements (`MTN_DISBURSEMENTS_KEY`).
+
+### Changed
+- **BREAKING —** per-product credentials moved from the top level into `products.{collections,disbursements}`. Collections and Disbursements are separate product subscriptions in the MoMo portal, each issuing its own primary key (and, in production, its own API user/key pair), so a single top-level `subscriptionKey`/`apiUser`/`apiKey` could not express both. `baseUrl` and `targetEnvironment` stay top-level — the host and wallet platform are shared across products. At least one product must be configured. All call sites (`client.collections.*`) are unchanged; see the README's "Migrating from 0.2.x".
+- **BREAKING —** the integration-test env var `MTN_SUBSCRIPTION_KEY` is now `MTN_COLLECTIONS_KEY`.
+- Each product now owns its own token and its own 401-retry state: a 401 on disbursements invalidates only the disbursements token and leaves collections untouched. Previously a single `TokenManager` was hardcoded to the collections token endpoint.
+- In sandbox, `authenticate()` provisions one API user/key pair **per configured product**, since each product subscription carries a different subscription key. It authenticates all configured products in parallel and fails as a whole if any one fails.
+- Calling into a product that was not configured now rejects with `INVALID_CONFIGURATION` naming the missing config key, instead of failing on an undefined namespace.
+
+### Internal
+- Extracted `MtnProductSession` (per-product credentials, token, context, and 401 retry) and `errors.ts` (`withMtnErrorMapping`) out of the adapter and out of `collections.ts`. `MtnMomoAdapter` now only wires products to operations, and `collections.ts`/`disbursements.ts` are symmetric modules of pure functions. `CollectionsRequestContext` was renamed to `MtnRequestContext` — it was never collections-specific.
+
 ## [0.2.1] - 2026-07-29
 
 ### Changed

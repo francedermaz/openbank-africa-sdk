@@ -1,8 +1,17 @@
-import { OpenBankError, type Balance, type PaymentResult, type PaymentStatus, type SdkErrorCode } from '../../core/types';
+import {
+  OpenBankError,
+  type AccountHolderStatus,
+  type Balance,
+  type PaymentResult,
+  type PaymentStatus,
+  type SdkErrorCode,
+} from '../../core/types';
 
 const VALID_STATUSES: readonly PaymentStatus[] = ['PENDING', 'SUCCESSFUL', 'FAILED'];
 
-// Per MTN's Open API "Common Error Codes" reference.
+// Per MTN's Open API "Common Error Codes" reference. NOT_ENOUGH_FUNDS,
+// PAYER_LIMIT_REACHED and SENDER_ACCOUNT_NOT_ACTIVE surface on disbursement
+// transfers; the rest are shared across products.
 const MTN_ERROR_CODES: readonly SdkErrorCode[] = [
   'RESOURCE_NOT_FOUND',
   'RESOURCE_ALREADY_EXIST',
@@ -10,6 +19,9 @@ const MTN_ERROR_CODES: readonly SdkErrorCode[] = [
   'EXPIRED',
   'PAYER_NOT_FOUND',
   'PAYEE_NOT_FOUND',
+  'NOT_ENOUGH_FUNDS',
+  'PAYER_LIMIT_REACHED',
+  'SENDER_ACCOUNT_NOT_ACTIVE',
   'NOT_ALLOWED',
   'NOT_ALLOWED_TARGET_ENVIRONMENT',
   'INVALID_CALLBACK_URL_HOST',
@@ -36,6 +48,17 @@ export function mapMtnBalanceResponse(response: { availableBalance: string; curr
     throw new OpenBankError('UNKNOWN_ERROR', `Invalid balance value received from MTN: "${response.availableBalance}"`);
   }
   return { availableBalance, currency: response.currency };
+}
+
+/**
+ * MTN documents this endpoint as answering HTTP 200 when the account holder is
+ * active, carrying a `{ "result": true }` body. Some deployments answer 200
+ * with an empty body instead, so a 200 counts as active unless `result` is
+ * explicitly false. A number MTN does not know answers 404, which the caller
+ * translates to inactive rather than surfacing as an error.
+ */
+export function mapMtnAccountHolderResponse(response: { result?: boolean } | undefined): AccountHolderStatus {
+  return { isActive: response?.result !== false };
 }
 
 export function mapMtnError(reason: string, message: string, httpStatus?: number): OpenBankError {
